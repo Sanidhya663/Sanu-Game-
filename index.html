@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tic Tac Toe</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tic Tac Toe Pro</title>
+
   <style>
     body {
       background: #f4f4f9;
@@ -21,6 +22,28 @@
 
     h1 {
       color: #333;
+    }
+
+    .controls {
+      margin-bottom: 15px;
+    }
+
+    .controls h3 {
+      margin: 5px 0;
+    }
+
+    .controls button {
+      margin: 5px;
+      padding: 8px 15px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #333;
+      color: white;
+    }
+
+    .controls button:hover {
+      background: #555;
     }
 
     .board {
@@ -43,7 +66,6 @@
       justify-content: center;
       align-items: center;
       cursor: pointer;
-      transition: background-color 0.2s ease;
     }
 
     .cell:hover {
@@ -52,7 +74,6 @@
 
     .cell.taken {
       cursor: not-allowed;
-      color: #333;
     }
 
     .status {
@@ -60,7 +81,7 @@
       margin-top: 10px;
     }
 
-    button {
+    .restart {
       margin-top: 15px;
       padding: 10px 20px;
       font-size: 1rem;
@@ -71,91 +92,199 @@
       cursor: pointer;
     }
 
-    button:hover {
+    .restart:hover {
       background-color: #555;
     }
   </style>
 </head>
+
 <body>
-  <div class="game-container">
-    <h1>Tic Tac Toe</h1>
-    <div class="board" id="board"></div>
-    <div class="status" id="status">Player X's turn</div>
-    <button onclick="resetGame()">Restart Game</button>
+
+<div class="game-container">
+  <h1>🎮 Tic Tac Toe</h1>
+
+  <div class="controls">
+    <h3>Game Mode</h3>
+    <button onclick="setMode('friend')">👥 Friend</button>
+    <button onclick="setMode('ai')">🤖 AI</button>
+
+    <h3>Difficulty</h3>
+    <button onclick="setDifficulty('easy')">Easy</button>
+    <button onclick="setDifficulty('hard')">Hard</button>
+    <button onclick="setDifficulty('impossible')">Impossible</button>
   </div>
 
-  <script>
-    const board = document.getElementById("board");
-    const statusText = document.getElementById("status");
-    let currentPlayer = "X";
-    let gameOver = false;
-    let moves = Array(9).fill("");
+  <div class="board" id="board"></div>
+  <div class="status" id="status">Player X's turn</div>
+  <button class="restart" onclick="resetGame()">Restart</button>
+</div>
 
-    function createBoard() {
-      board.innerHTML = "";
-      for (let i = 0; i < 9; i++) {
-        const cell = document.createElement("div");
-        cell.classList.add("cell");
-        cell.dataset.index = i;
-        cell.addEventListener("click", handleMove);
-        board.appendChild(cell);
+<script>
+  const board = document.getElementById("board");
+  const statusText = document.getElementById("status");
+
+  let currentPlayer = "X";
+  let gameOver = false;
+  let moves = Array(9).fill("");
+
+  let mode = "friend";
+  let difficulty = "easy";
+
+  function createBoard() {
+    board.innerHTML = "";
+    for (let i = 0; i < 9; i++) {
+      const cell = document.createElement("div");
+      cell.classList.add("cell");
+      cell.dataset.index = i;
+      cell.addEventListener("click", handleMove);
+      board.appendChild(cell);
+    }
+  }
+
+  function handleMove(e) {
+    const index = e.target.dataset.index;
+
+    if (moves[index] !== "" || gameOver) return;
+
+    makeMove(index, currentPlayer);
+
+    if (gameOver) return;
+
+    if (mode === "ai" && currentPlayer === "O") {
+      setTimeout(aiMove, 300);
+    }
+  }
+
+  function makeMove(index, player) {
+    moves[index] = player;
+
+    const cell = document.querySelector(`[data-index='${index}']`);
+    cell.textContent = player;
+    cell.classList.add("taken");
+
+    if (checkWin(player)) {
+      statusText.textContent = `🎉 Player ${player} wins!`;
+      gameOver = true;
+      return;
+    }
+
+    if (moves.every(c => c !== "")) {
+      statusText.textContent = "It's a draw!";
+      gameOver = true;
+      return;
+    }
+
+    currentPlayer = currentPlayer === "X" ? "O" : "X";
+    statusText.textContent = `Player ${currentPlayer}'s turn`;
+  }
+
+  function aiMove() {
+    let index;
+
+    if (difficulty === "easy") {
+      index = randomMove();
+    } else if (difficulty === "hard") {
+      index = bestMoveSimple();
+    } else {
+      index = minimax(moves, "O").index;
+    }
+
+    makeMove(index, "O");
+  }
+
+  function randomMove() {
+    const empty = moves.map((v, i) => v === "" ? i : null).filter(v => v !== null);
+    return empty[Math.floor(Math.random() * empty.length)];
+  }
+
+  function bestMoveSimple() {
+    // Win
+    for (let i = 0; i < 9; i++) {
+      if (moves[i] === "") {
+        moves[i] = "O";
+        if (checkWin("O")) {
+          moves[i] = "";
+          return i;
+        }
+        moves[i] = "";
       }
     }
 
-    function handleMove(e) {
-      const index = e.target.dataset.index;
-      if (moves[index] !== "" || gameOver) return;
-
-      moves[index] = currentPlayer;
-      e.target.textContent = currentPlayer;
-      e.target.classList.add("taken");
-
-      if (checkWin()) {
-        statusText.textContent = `🎉 Player ${currentPlayer} wins!`;
-        gameOver = true;
-        return;
+    // Block
+    for (let i = 0; i < 9; i++) {
+      if (moves[i] === "") {
+        moves[i] = "X";
+        if (checkWin("X")) {
+          moves[i] = "";
+          return i;
+        }
+        moves[i] = "";
       }
-
-      if (moves.every(cell => cell !== "")) {
-        statusText.textContent = "It's a draw!";
-        gameOver = true;
-        return;
-      }
-
-      currentPlayer = currentPlayer === "X" ? "O" : "X";
-      statusText.textContent = `Player ${currentPlayer}'s turn`;
     }
 
-    function checkWin() {
-      const winPatterns = [
-        [0, 1, 2],
-        [3, 4, 5],
-        [6, 7, 8],
-        [0, 3, 6],
-        [1, 4, 7],
-        [2, 5, 8],
-        [0, 4, 8],
-        [2, 4, 6],
-      ];
+    return randomMove();
+  }
 
-      return winPatterns.some(pattern => {
-        const [a, b, c] = pattern;
-        return (
-          moves[a] &&
-          moves[a] === moves[b] &&
-          moves[a] === moves[c]
-        );
-      });
+  function minimax(newMoves, player) {
+    const empty = newMoves.map((v, i) => v === "" ? i : null).filter(v => v !== null);
+
+    if (checkWin("X")) return { score: -10 };
+    if (checkWin("O")) return { score: 10 };
+    if (empty.length === 0) return { score: 0 };
+
+    let movesList = [];
+
+    for (let i of empty) {
+      let move = {};
+      move.index = i;
+      newMoves[i] = player;
+
+      let result = minimax(newMoves, player === "O" ? "X" : "O");
+      move.score = result.score;
+
+      newMoves[i] = "";
+      movesList.push(move);
     }
 
-    function resetGame() {
-      moves = Array(9).fill("");
-      currentPlayer = "X";
-      gameOver = false;
-      statusText.textContent = "Player X's turn";
-      createBoard();
-    }
+    return player === "O"
+      ? movesList.reduce((best, m) => m.score > best.score ? m : best)
+      : movesList.reduce((best, m) => m.score < best.score ? m : best);
+  }
 
+  function checkWin(player) {
+    const patterns = [
+      [0,1,2],[3,4,5],[6,7,8],
+      [0,3,6],[1,4,7],[2,5,8],
+      [0,4,8],[2,4,6]
+    ];
+
+    return patterns.some(([a,b,c]) =>
+      moves[a] === player &&
+      moves[b] === player &&
+      moves[c] === player
+    );
+  }
+
+  function resetGame() {
+    moves = Array(9).fill("");
+    currentPlayer = "X";
+    gameOver = false;
+    statusText.textContent = "Player X's turn";
     createBoard();
-  </script>
+  }
+
+  function setMode(m) {
+    mode = m;
+    resetGame();
+  }
+
+  function setDifficulty(d) {
+    difficulty = d;
+    resetGame();
+  }
+
+  createBoard();
+</script>
+
 </body>
+</html>
